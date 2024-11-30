@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Collaborative Editor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    #editor-container {
+      width: 600px;
+      text-align: center;
+    }
+    #editor {
+      width: 100%;
+      height: 300px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      font-size: 16px;
+      resize: none;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="editor-container">
+    <h1>Real-Time Collaborative Editor</h1>
+    <textarea id="editor" placeholder="Start typing..."></textarea>
+  </div>
+
+  <!-- Importing Socket.io from CDN -->
+  <!-- <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> -->
+   <script src="http://127.0.0.1:5501/socket.io/?EIO=4&transport=polling&t=PCcNryU"></script>
+  <script>
+    // Connect to the server
+    const socket = io();
+
+    const editor = document.getElementById('editor');
+
+    // Emit changes to the server when the user types
+    editor.addEventListener('input', () => {
+      const content = editor.value;
+      socket.emit('edit', content);
+    });
+
+    // Receive changes from the server
+    socket.on('update', (content) => {
+      editor.value = content;
+    });
+  </script>
+
+  <!-- Server code using Node.js and Express -->
+  <script>
+    const express = require('express');
+    const http = require('http');
+    const { Server } = require('socket.io');
+
+    const app = express();
+    const server = http.createServer(app);
+    const io = new Server(server);
+
+    app.use(express.static(__dirname));
+
+    // Store the content of the editor to synchronize it across users
+    let content = "";
+
+    // Listen for client connections
+    io.on('connection', (socket) => {
+      console.log('A user connected:', socket.id);
+
+      // Send current content to the new user
+      socket.emit('update', content);
+
+      // Listen for edit events from clients
+      socket.on('edit', (newContent) => {
+        content = newContent;
+        socket.broadcast.emit('update', content); // Broadcast changes to all other clients
+      });
+
+      // Handle disconnection
+      socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+      });
+    });
+
+    server.listen(3000, () => {
+      // console.log('Server listening on http://localhost:3000'); 
+      console.log('Server listening on http://127.0.0.1:5501');
+    });
+  </script>
+</body>
+</html>
